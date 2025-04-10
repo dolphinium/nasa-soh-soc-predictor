@@ -1,0 +1,40 @@
+version: '3.8' # Specify docker-compose version
+
+services:
+  backend:
+    build: ./backend # Path to the directory containing the backend Dockerfile
+    container_name: battery_backend
+    ports:
+      - "5001:5000" # Changed host port to 5001, container still uses 5000 internally
+    volumes:
+      # Mount host directories into the container paths defined in main.py
+      # Use :ro for read-only if the container doesn't need to write back
+      - ./models:/app/models:ro
+      - ./data:/app/data:ro
+    networks:
+      - battery_net
+    # Restart policy (optional)
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend # Path to the directory containing the frontend Dockerfile
+    container_name: battery_frontend
+    ports:
+      - "8501:8501" # Map host port 8501 to container port 8501
+    volumes:
+      # Mount data directory for the frontend to load actual SoH plots
+      - ./data:/app/data:ro
+    environment:
+      # Set the environment variable for the frontend to find the backend
+      # 'backend' is the service name defined above, Docker Compose handles DNS resolution
+      - API_BASE_URL=http://backend:5000
+    networks:
+      - battery_net
+    depends_on:
+      - backend # Wait for the backend service to start (doesn't guarantee readiness)
+    # Restart policy (optional)
+    restart: unless-stopped
+
+networks:
+  battery_net: # Define a custom network for the services to communicate
+    driver: bridge
