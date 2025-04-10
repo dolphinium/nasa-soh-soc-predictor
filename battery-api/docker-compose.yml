@@ -1,0 +1,45 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  # Renamed service for clarity
+  backend_api:
+    build:
+      context: .        # Build context is the current directory
+      dockerfile: Dockerfile # Specify the Dockerfile for the backend
+    image: battery-api-image # Optional: name the image
+    container_name: battery-api-backend # Optional: name the container
+    ports:
+      - "8000:8000"
+    volumes:
+      # Ensure models are accessible inside the container
+      - ./saved_models:/code/saved_models
+      # Optional: Mount code for backend development (uncomment if needed)
+      # - ./app:/code/app
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+
+  # NEW Streamlit Frontend Service
+  frontend_st:
+    build:
+      context: .             # Build context is the current directory
+      dockerfile: Dockerfile.streamlit # Specify the DIFFERENT Dockerfile
+    image: battery-streamlit-frontend # Optional: name the image
+    container_name: battery-streamlit-frontend # Optional: name the container
+    ports:
+      - "8501:8501" # Map host port 8501 to container port 8501
+    # Optional: Mount code for frontend development (uncomment if needed)
+    # - ./streamlit_app.py:/app/streamlit_app.py
+    depends_on:
+      - backend_api # Wait for the backend service to start
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+
+# Optional: Define networks if needed, though default usually works
+# networks:
+#   default:
+#     driver: bridge
