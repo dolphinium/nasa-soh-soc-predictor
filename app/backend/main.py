@@ -6,16 +6,16 @@ import os
 from tensorflow import keras
 from keras.preprocessing.sequence import pad_sequences
 from pydantic import BaseModel
-import uvicorn # Import uvicorn here
-import asyncio # For asynchronous loading
+import uvicorn 
+import asyncio 
 
 # --- Configuration ---
 MODEL_DIR = '/app/models/'
 DATA_DIR = '/app/data/processed_data/'
 MAX_SEQ_LENGTHS = {
-    'B0005': 371, # UPDATE WITH ACTUAL VALUE
-    'B0006': 381, # UPDATE WITH ACTUAL VALUE
-    'B0018': 328  # UPDATE WITH ACTUAL VALUE
+    'B0005': 371,
+    'B0006': 381,
+    'B0018': 328
 }
 SEQUENCE_FEATURES = [
     'voltage_measured_smooth',
@@ -24,14 +24,11 @@ SEQUENCE_FEATURES = [
     'measurement_time_relative'
 ]
 
-# --- Global Cache for Resources ---
-# Use dictionaries to store loaded models, scalers, and data
 models_cache = {}
 scalers_cache = {}
 data_cache = {}
-loading_tasks = {} # Track loading tasks to prevent redundant loads
+loading_tasks = {} 
 
-# --- Pydantic Models for Request/Response ---
 class PredictionRequest(BaseModel):
     cycle_number: int
 
@@ -40,7 +37,6 @@ class PredictionResponse(BaseModel):
     cycle_number: int
     predicted_soh: float
 
-# --- Helper Function to Load Resources Asynchronously ---
 async def load_resources_async(battery_id: str):
     """Asynchronously loads resources if not already loaded or loading."""
     if battery_id in models_cache:
@@ -100,10 +96,8 @@ def load_resources_sync(battery_id: str):
         raise e
 
 
-# --- FastAPI App Instance ---
 app = FastAPI(title="Battery SoH Prediction API")
 
-# --- API Endpoints ---
 @app.get("/", summary="API Root/Health Check")
 def read_root():
     return {"message": "Welcome to the Battery SoH Prediction API"}
@@ -175,15 +169,8 @@ async def predict_soh(battery_id: str, request_body: PredictionRequest, backgrou
     return result
 
 
-# --- Add logic to run with uvicorn if script is executed directly ---
-# This part is usually for local testing/running without a separate uvicorn command
+
 if __name__ == "__main__":
     print("Starting API server with uvicorn...")
-    # Preload resources on startup (optional, can increase startup time)
-    # Using asyncio.run to handle async loading during startup if needed
-    # print("Preloading resources...")
-    # for b_id in MAX_SEQ_LENGTHS.keys():
-    #     asyncio.run(load_resources_async(b_id))
-    # print("Preloading complete.")
 
     uvicorn.run(app, host="0.0.0.0", port=5000)
