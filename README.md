@@ -35,7 +35,7 @@ Essential features retained:
 
 1. Clone the repository:
 ```bash
-git clone [repository-url]
+git clone https://github.com/dolphinium/nasa-soh-soc-predictor.git
 cd nasa-battery-soh-soc-predictor/app/
 ```
 
