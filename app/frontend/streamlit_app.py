@@ -12,18 +12,16 @@ DATA_DIR = '/app/data/processed_data/'
 @st.cache_data # Cache data to avoid reloading on every interaction
 def load_battery_data(battery_id):
     """Loads cycle number and SoH for plotting."""
-    filename = os.path.join(DATA_DIR, f'nasa_battery_data_{battery_id}_preprocessed.csv')
+    filename = os.path.join(DATA_DIR, f'optimized_nasa_battery_data_{battery_id}_preprocessed.csv')
     if not os.path.exists(filename):
         st.error(f"Data file not found for {battery_id}: {filename}")
         return None
     try:
         df = pd.read_csv(filename)
-        # Get unique cycle/SoH pairs, focusing on discharge for SoH value
-        df_soh = df[df['cycle_type'] == 'discharge'].dropna(subset=['soh'])
-        if df_soh.empty:
-             st.warning(f"No discharge cycles with SoH found for {battery_id}")
-             return df[['cycle_number']].drop_duplicates().sort_values('cycle_number') # Return cycles only
-        return df_soh[['cycle_number', 'soh']].drop_duplicates().sort_values('cycle_number')
+        if df.empty:
+            st.warning(f"No cycles found for {battery_id}")
+            return None
+        return df[['cycle_number', 'soh']].drop_duplicates().sort_values('cycle_number')
     except Exception as e:
         st.error(f"Error loading data for {battery_id}: {e}")
         return None
@@ -43,21 +41,17 @@ if battery_cycle_data is not None and not battery_cycle_data.empty:
     min_cycle = int(battery_cycle_data['cycle_number'].min())
     max_cycle = int(battery_cycle_data['cycle_number'].max())
 
-    # Select cycle (only show discharge cycles if SoH exists)
+    # Select cycle
     valid_cycles = battery_cycle_data['cycle_number'].unique()
-    selected_cycle = st.sidebar.selectbox(f"Discharge Cycle Number ({min_cycle}-{max_cycle}):", valid_cycles)
+    selected_cycle = st.sidebar.selectbox(f"Cycle Number ({min_cycle}-{max_cycle}):", valid_cycles)
 
     # --- Display Actual SoH Trend ---
     st.subheader(f"Actual SoH Trend for {selected_battery}")
-    if 'soh' in battery_cycle_data.columns:
-        fig_actual = go.Figure()
-        fig_actual.add_trace(go.Scatter(x=battery_cycle_data['cycle_number'], y=battery_cycle_data['soh'],
-                                      mode='lines+markers', name='Actual SoH'))
-        fig_actual.update_layout(xaxis_title="Cycle Number", yaxis_title="SoH", yaxis_range=[0.5,1.1]) # Adjust range if needed
-        st.plotly_chart(fig_actual, use_container_width=True)
-    else:
-        st.info("Actual SoH data not available for plotting.")
-
+    fig_actual = go.Figure()
+    fig_actual.add_trace(go.Scatter(x=battery_cycle_data['cycle_number'], y=battery_cycle_data['soh'],
+                                  mode='lines+markers', name='Actual SoH'))
+    fig_actual.update_layout(xaxis_title="Cycle Number", yaxis_title="SoH", yaxis_range=[0.5,1.1]) # Adjust range if needed
+    st.plotly_chart(fig_actual, use_container_width=True)
 
     # --- Prediction Section ---
     st.sidebar.markdown("---")
@@ -76,12 +70,10 @@ if battery_cycle_data is not None and not battery_cycle_data.empty:
 
             st.metric(label=f"Predicted SoH for Cycle {selected_cycle}", value=f"{predicted_soh:.4f}")
 
-            # Optionally add prediction point to the plot
-            if 'soh' in battery_cycle_data.columns:
-                 fig_actual.add_trace(go.Scatter(x=[selected_cycle], y=[predicted_soh],
-                                               mode='markers', name='Prediction', marker=dict(color='red', size=12, symbol='x')))
-                 st.plotly_chart(fig_actual, use_container_width=True) # Re-display plot with prediction
-
+            # Add prediction point to the plot
+            fig_actual.add_trace(go.Scatter(x=[selected_cycle], y=[predicted_soh],
+                                          mode='markers', name='Prediction', marker=dict(color='red', size=12, symbol='x')))
+            st.plotly_chart(fig_actual, use_container_width=True) # Re-display plot with prediction
 
         except requests.exceptions.RequestException as e:
             st.error(f"API request failed: {e}")
@@ -101,4 +93,4 @@ else:
      st.error(f"Could not load data for {selected_battery}")
 
 st.sidebar.markdown("---")
-st.sidebar.info("Select a battery and a discharge cycle, then click 'Predict SoH'.")
+st.sidebar.info("Select a battery and cycle, then click 'Predict SoH'.")

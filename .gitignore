@@ -2,7 +2,7 @@
 data/processed_data/*.csv
 data/raw_data/*.csv
 
-app/data/processed_data/*.csv
+
 battery-api/saved_models/*.joblib
 final_trials/saved_models/*.joblib
 # Python

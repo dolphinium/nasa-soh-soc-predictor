@@ -38,7 +38,7 @@ class PredictionResponse(BaseModel):
     predicted_soh: float
 
 async def load_resources_async(battery_id: str):
-    """Asynchronously loads resources if not already loaded or loading."""
+    """Asynchronously loads resources if not already loaded."""
     if battery_id in models_cache:
         return True # Already loaded
 
@@ -68,7 +68,7 @@ def load_resources_sync(battery_id: str):
     """Synchronous part of resource loading (runs in background task)."""
     model_path = os.path.join(MODEL_DIR, f'lstm_final_{battery_id}_soh.keras')
     scaler_path = os.path.join(MODEL_DIR, f'scaler_lstm_{battery_id}_soh.pkl')
-    data_path = os.path.join(DATA_DIR, f'nasa_battery_data_{battery_id}_preprocessed.csv')
+    data_path = os.path.join(DATA_DIR, f'optimized_nasa_battery_data_{battery_id}_preprocessed.csv')
 
     try:
         # Check if files exist before trying to load
@@ -121,18 +121,14 @@ async def predict_soh(battery_id: str, request_body: PredictionRequest, backgrou
     # Retrieve data for the cycle
     cycle_number = request_body.cycle_number
     df_battery = data_cache[battery_id]
-    cycle_data = df_battery[
-        (df_battery['cycle_number'] == cycle_number) &
-        (df_battery['cycle_type'] == 'discharge')
-    ].copy()
+    cycle_data = df_battery[df_battery['cycle_number'] == cycle_number].copy()
 
     if cycle_data.empty:
-        raise HTTPException(status_code=404, detail=f"No discharge data found for cycle {cycle_number} of battery {battery_id}")
+        raise HTTPException(status_code=404, detail=f"No data found for cycle {cycle_number} of battery {battery_id}")
 
     sequence = cycle_data[SEQUENCE_FEATURES].values
-    if sequence.shape[0] == 0: # Should not happen if cycle_data is not empty, but safety check
+    if sequence.shape[0] == 0:
          raise HTTPException(status_code=500, detail=f"Extracted sequence is empty for cycle {cycle_number}")
-
 
     # Preprocess: Scale and Pad
     try:
@@ -149,7 +145,6 @@ async def predict_soh(battery_id: str, request_body: PredictionRequest, backgrou
     except Exception as e:
         print(f"Preprocessing error for {battery_id}, cycle {cycle_number}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to preprocess sequence data: {e}")
-
 
     # Predict
     try:
@@ -168,9 +163,6 @@ async def predict_soh(battery_id: str, request_body: PredictionRequest, backgrou
     print(f"Prediction result: {result}")
     return result
 
-
-
 if __name__ == "__main__":
     print("Starting API server with uvicorn...")
-
     uvicorn.run(app, host="0.0.0.0", port=5000)
